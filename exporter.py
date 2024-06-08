@@ -4,13 +4,26 @@ import time # Importa o módulo time para fazer o sleep
 from prometheus_client import start_http_server, Gauge # Importa o módulo Gauge do Prometheus para criar a nossa métrica e o módulo start_http_server para iniciar o servidor
 
 url_numero_pessoas = 'http://api.open-notify.org/astros.json' # URL para pegar o número de astronautas
+url_local_ISS = 'http://api.open-notify.org/iss-now.json' # URL para pegar a localização do ISS
+
+def pega_local_ISS(): # Função para pegar a localização da ISS
+    try:
+        """
+        Pegar o local da estação espacial internacional
+        """
+        response = requests.get(url_local_ISS) # Faz a requisição para a URL
+        data = response.json() # Converte o resultado em JSON
+        return data['iss_position'] # Retorna o resultado da requisição
+    except Exception as e: # Caso ocorra algum erro
+        print("Não foi possível acessar a url!") # Imprime uma mensagem de erro
+        raise e # Lança a exceção
 
 def pega_numero_astronautas(): # Função para pegar o número de astronautas
     try: # Tenta fazer a requisição HTTP
         """
         Pegar o número de astronautas no espaço 
         """
-        response = requests.get(url_numero_pessoas) # Faz a requisição HTTP
+        response = requests.get(url) # Faz a requisição HTTP
         data = response.json() # Converte o resultado em JSON
         return data['number'] # Retorna o número de astronautas
     except Exception as e: # Se der algum erro
@@ -22,14 +35,20 @@ def atualiza_metricas(): # Função para atualizar as métricas
         """
         Atualiza as métricas com o número de astronautas e local da estação espacial internacional
         """
-        numero_pessoas = Gauge('numero_de_astronautas', 'Número de astronautas no espaço') # Cria a métrica
-        
+        numero_pessoas = Gauge('numero_de_astronautas', 'Número de astronautas no espaço') # Cria a métrica para o número de astronautas
+        longitude = Gauge('longitude_ISS', 'Longitude da Estação Espacial Internacional') # Cria a métrica para a longitude da estação espacial internacional
+        latitude = Gauge('latitude_ISS', 'Latitude da Estação Espacial Internacional') # Cria a métrica para a latitude da estação espacial internacional
+
         while True: # Enquanto True
             numero_pessoas.set(pega_numero_astronautas()) # Atualiza a métrica com o número de astronautas
+            longitude.set(pega_local_ISS()['longitude']) # Atualiza a métrica com a longitude da estação espacial internacional
+            latitude.set(pega_local_ISS()['latitude']) # Atualiza a métrica com a latitude da estação espacial internacional
             time.sleep(10) # Faz o sleep de 10 segundos
-            print("O número atual de astronautas no espaço é: %s" % pega_numero_astronautas()) # Imprime o número de astronautas no espaço
+            print("O número atual de astronautas no espaço é: %s" % pega_numero_astronautas()) # Imprime o número atual de astronautas no espaço
+            print("A longitude atual da Estação Espacial Internacional é: %s" % pega_local_ISS()['longitude']) # Imprime a longitude atual da estação espacial internacional
+            print("A latitude atual da Estação Espacial Internacional é: %s" % pega_local_ISS()['latitude']) # Imprime a latitude atual da estação espacial internacional
     except Exception as e: # Se der algum erro
-        print("A quantidade de astronautas não pode ser atualizada!") # Imprime que não foi possível atualizar a quantidade de astronautas
+        print("Problemas para atualizar as métricas! \n\n====> %s \n" % e) # Imprime que ocorreu um problema para atualizar as métricas
         raise e # Lança a exceção
         
 def inicia_exporter(): # Função para iniciar o exporter
